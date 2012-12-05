@@ -24,7 +24,6 @@
 package com.jeffboody.BlueSmirf;
 
 import android.util.Log;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
@@ -44,6 +43,7 @@ public class BlueSmirfSPP
 
 	// Bluetooth state
 	private boolean          mIsConnected;
+	private boolean          mIsError;
 	private BluetoothAdapter mBluetoothAdapter;
 	private BluetoothSocket  mBluetoothSocket;
 	private OutputStream     mOutputStream;
@@ -52,12 +52,16 @@ public class BlueSmirfSPP
 	public BlueSmirfSPP()
 	{
 		mIsConnected      = false;
+		mIsError          = false;
 		mBluetoothAdapter = null;
 		mBluetoothSocket  = null;
 		mOutputStream     = null;
 		mInputStream      = null;
 	}
 
+	// connect/disconnect/isConnected should be called from main thread
+	// readByte/writeByte/flush/isError can be different threads
+	// but only while connected
 	public boolean connect(String addr)
 	{
 		if(mIsConnected)
@@ -108,25 +112,28 @@ public class BlueSmirfSPP
 
 	public void disconnect()
 	{
-		try
-		{
-			mOutputStream.close();
-			mInputStream.close();
-			mBluetoothSocket.close();
-		}
-		catch(Exception e)
-		{
-			Log.e(TAG, "close: " + e);
-		}
+		// don't log error when closing streams
+		mIsConnected = false;
 
+		try { mOutputStream.close();    } catch(Exception e) { }
+		try { mInputStream.close();     } catch(Exception e) { }
+		try { mBluetoothSocket.close(); } catch(Exception e) { }
+
+		mOutputStream     = null;
+		mInputStream      = null;
 		mBluetoothSocket  = null;
 		mBluetoothAdapter = null;
-		mIsConnected      = false;
+		mIsError          = false;
 	}
 
 	public boolean isConnected()
 	{
 		return mIsConnected;
+	}
+
+	public boolean isError()
+	{
+		return mIsError;
 	}
 
 	public void writeByte(int b)
@@ -135,10 +142,13 @@ public class BlueSmirfSPP
 		{
 			mOutputStream.write(b);
 		}
-		catch (IOException e)
+		catch (Exception e)
 		{
-			Log.e(TAG, "writeByte: " + e);
-			disconnect();
+			if(mIsConnected && (mIsError == false))
+			{
+				Log.e(TAG, "writeByte: " + e);
+				mIsError = true;
+			}
 		}
 	}
 
@@ -149,26 +159,29 @@ public class BlueSmirfSPP
 		{
 			b = mInputStream.read();
 		}
-		catch (IOException e)
+		catch (Exception e)
 		{
-			Log.e(TAG, "readByte: " + e);
-			disconnect();
+			if(mIsConnected && (mIsError == false))
+			{
+				Log.e(TAG, "readByte: " + e);
+				mIsError = true;
+			}
 		}
 		return b;
 	}
 
 	public void flush()
 	{
-		if (mOutputStream != null)
+		try
 		{
-			try
-			{
-				mOutputStream.flush();
-			}
-			catch (IOException e)
+			mOutputStream.flush();
+		}
+		catch (Exception e)
+		{
+			if(mIsConnected && (mIsError == false))
 			{
 				Log.e(TAG, "flush: " + e);
-				disconnect();
+				mIsError = true;
 			}
 		}
 	}
