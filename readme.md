@@ -1,19 +1,20 @@
-[About]
+About
+=====
 
-	This submodule consists of a helper class to enable communication
-	between Android and Arduino via a Bluesmirf Bluetooth module. The
-	BlueSmirf module is available from Sparkfun in two models.
+This submodule consists of a helper class to enable communication
+between Android and Arduino via a Bluesmirf Bluetooth module. The
+BlueSmirf module is available from Sparkfun in two models.
 
-		https://www.sparkfun.com/products/10268 - Bluesmirf Gold
-		https://www.sparkfun.com/products/10269 - Bluesmirf Silver
+* <a href="https://www.sparkfun.com/products/10268">Bluesmirf Gold</a>
+* <a href="https://www.sparkfun.com/products/10269">Bluesmirf Silver</a>
 
-	A demo app using this submodule is available from:
+For an example of how to use this module try this
+<a href="https://github.com/jeffboody/bluesmirf-demo">demo app</a>.
 
-		https://github.com/jeffboody/bluesmirf-demo
+Send questions or comments to Jeff Boody - jeffboody@gmail.com
 
-	Send questions or comments to Jeff Boody - jeffboody@gmail.com
-
-[License]
+License
+=======
 
 	Copyright (c) 2012 Jeff Boody
 
