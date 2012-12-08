@@ -24,6 +24,8 @@
 package com.jeffboody.BlueSmirf;
 
 import android.util.Log;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
@@ -41,9 +43,12 @@ public class BlueSmirfSPP
 	// well known SPP UUID
 	private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
+	// Internal state (protected by lock)
+	private Lock    mLock;
+	private boolean mIsConnected;
+	private boolean mIsError;
+
 	// Bluetooth state
-	private boolean          mIsConnected;
-	private boolean          mIsError;
 	private BluetoothAdapter mBluetoothAdapter;
 	private BluetoothSocket  mBluetoothSocket;
 	private OutputStream     mOutputStream;
@@ -51,6 +56,7 @@ public class BlueSmirfSPP
 
 	public BlueSmirfSPP()
 	{
+		mLock             = new ReentrantLock();
 		mIsConnected      = false;
 		mIsError          = false;
 		mBluetoothAdapter = null;
@@ -59,15 +65,20 @@ public class BlueSmirfSPP
 		mInputStream      = null;
 	}
 
-	// connect/disconnect/isConnected should be called from main thread
-	// readByte/writeByte/flush/isError can be different threads
-	// but only while connected
 	public boolean connect(String addr)
 	{
-		if(mIsConnected)
+		mLock.lock();
+		try
 		{
-			Log.e(TAG, "connect: already connected");
-			return false;
+			if(mIsConnected)
+			{
+				Log.e(TAG, "connect: already connected");
+				return false;
+			}
+		}
+		finally
+		{
+			mLock.unlock();
 		}
 
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -106,34 +117,67 @@ public class BlueSmirfSPP
 			return false;
 		}
 
-		mIsConnected = true;
+		mLock.lock();
+		try
+		{
+			mIsConnected = true;
+			mIsError     = false;
+		}
+		finally
+		{
+			mLock.unlock();
+		}
 		return true;
 	}
 
 	public void disconnect()
 	{
-		// don't log error when closing streams
-		mIsConnected = false;
+		mLock.lock();
+		try
+		{
+			// don't log error when closing streams
+			mIsConnected = false;
 
-		try { mOutputStream.close();    } catch(Exception e) { }
-		try { mInputStream.close();     } catch(Exception e) { }
-		try { mBluetoothSocket.close(); } catch(Exception e) { }
+			try { mOutputStream.close();    } catch(Exception e) { }
+			try { mInputStream.close();     } catch(Exception e) { }
+			try { mBluetoothSocket.close(); } catch(Exception e) { }
 
-		mOutputStream     = null;
-		mInputStream      = null;
-		mBluetoothSocket  = null;
-		mBluetoothAdapter = null;
-		mIsError          = false;
+			mOutputStream     = null;
+			mInputStream      = null;
+			mBluetoothSocket  = null;
+			mBluetoothAdapter = null;
+			mIsError          = false;
+		}
+		finally
+		{
+			mLock.unlock();
+		}
 	}
 
 	public boolean isConnected()
 	{
-		return mIsConnected;
+		mLock.lock();
+		try
+		{
+			return mIsConnected;
+		}
+		finally
+		{
+			mLock.unlock();
+		}
 	}
 
 	public boolean isError()
 	{
-		return mIsError;
+		mLock.lock();
+		try
+		{
+			return mIsError;
+		}
+		finally
+		{
+			mLock.unlock();
+		}
 	}
 
 	public void writeByte(int b)
@@ -144,10 +188,18 @@ public class BlueSmirfSPP
 		}
 		catch (Exception e)
 		{
-			if(mIsConnected && (mIsError == false))
+			mLock.lock();
+			try
 			{
-				Log.e(TAG, "writeByte: " + e);
-				mIsError = true;
+				if(mIsConnected && (mIsError == false))
+				{
+					Log.e(TAG, "writeByte: " + e);
+					mIsError = true;
+				}
+			}
+			finally
+			{
+				mLock.unlock();
 			}
 		}
 	}
@@ -161,10 +213,18 @@ public class BlueSmirfSPP
 		}
 		catch (Exception e)
 		{
-			if(mIsConnected && (mIsError == false))
+			mLock.lock();
+			try
 			{
-				Log.e(TAG, "readByte: " + e);
-				mIsError = true;
+				if(mIsConnected && (mIsError == false))
+				{
+					Log.e(TAG, "readByte: " + e);
+					mIsError = true;
+				}
+			}
+			finally
+			{
+				mLock.unlock();
 			}
 		}
 		return b;
@@ -178,10 +238,18 @@ public class BlueSmirfSPP
 		}
 		catch (Exception e)
 		{
-			if(mIsConnected && (mIsError == false))
+			mLock.lock();
+			try
 			{
-				Log.e(TAG, "flush: " + e);
-				mIsError = true;
+				if(mIsConnected && (mIsError == false))
+				{
+					Log.e(TAG, "flush: " + e);
+					mIsError = true;
+				}
+			}
+			finally
+			{
+				mLock.unlock();
 			}
 		}
 	}
