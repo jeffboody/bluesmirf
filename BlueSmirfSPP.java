@@ -47,6 +47,7 @@ public class BlueSmirfSPP
 	private Lock    mLock;
 	private boolean mIsConnected;
 	private boolean mIsError;
+	private String  mBluetoothAddress;
 
 	// Bluetooth state
 	private BluetoothAdapter mBluetoothAdapter;
@@ -63,6 +64,7 @@ public class BlueSmirfSPP
 		mBluetoothSocket  = null;
 		mOutputStream     = null;
 		mInputStream      = null;
+		mBluetoothAddress = null;
 	}
 
 	public boolean connect(String addr)
@@ -75,6 +77,7 @@ public class BlueSmirfSPP
 				Log.e(TAG, "connect: already connected");
 				return false;
 			}
+			mBluetoothAddress = addr;
 		}
 		finally
 		{
@@ -173,6 +176,19 @@ public class BlueSmirfSPP
 		try
 		{
 			return mIsError;
+		}
+		finally
+		{
+			mLock.unlock();
+		}
+	}
+
+	public String getBluetoothAddress()
+	{
+		mLock.lock();
+		try
+		{
+			return mBluetoothAddress;
 		}
 		finally
 		{
